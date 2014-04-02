@@ -21,6 +21,27 @@ function ff_meta_getmetadata ($url) {
     return $metadata;
 }
 
+if ( ! shortcode_exists( 'ff_state' ) ) {
+    add_shortcode( 'ff_state', 'ff_meta_shortcode_state');
+}
+// Example:
+// [ff_state]
+// [ff_state url="http://meta.hamburg.freifunk.net/ffhh.json"]
+function ff_meta_shortcode_state( $atts ) {
+    $default_url = get_option( 'ff_meta_url' );
+    extract(shortcode_atts( array(
+        'url' => $default_url,
+    ), $atts));
+
+    $metadata = ff_meta_getmetadata ($url);
+    $state = $metadata['state'];
+
+    // Output
+    $outstr = sprintf('%s',
+                         $state['nodes']);
+    return $outstr;
+}
+
 if ( ! shortcode_exists( 'ff_services' ) ) {
     add_shortcode( 'ff_services', 'ff_meta_shortcode_services');
 }
