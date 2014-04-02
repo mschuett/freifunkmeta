@@ -6,4 +6,22 @@ It reads (and caches) JSON input from a configured URL and provides shortcodes t
 
 Currently implemented are `[ff_services]` and `[ff_contact]`.
 
+## Example
 
+Text:
+
+    Services:
+
+    [ff_services]
+
+    Contact:
+
+    [ff_contact]
+
+    Contact Jena:
+
+    [ff_contact url="http://freifunk-jena.de/jena.json"]
+
+Output:
+
+![shortcode output example](http://mschuette.name/wp/wp-upload/freifunk_meta_example.png)
