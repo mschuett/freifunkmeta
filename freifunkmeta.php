@@ -33,12 +33,23 @@ if ( ! shortcode_exists( 'ff_contact' ) ) {
 }
 // Example:
 // [ff_state]
+// [ff_state hamburg]
 // [ff_state url="http://meta.hamburg.freifunk.net/ffhh.json"]
 function ff_meta_shortcode_handler( $atts, $content, $name ) {
     $default_url = get_option( 'ff_meta_url' );
     extract(shortcode_atts( array(
         'url' => $default_url,
     ), $atts));
+
+    // check for city name
+    if (!empty($atts[0])) {
+        $city = $atts[0];
+        if (false === ($directory = ff_meta_getmetadata (get_option( 'ff_meta_dir' )))
+            || empty($directory[$city])) {
+            return '';
+        }
+        $url = $directory[$city];
+    }
 
     if (empty($url) || false === ($metadata = ff_meta_getmetadata ($url))) {
         return '';
@@ -195,7 +206,7 @@ function ff_meta_url_callback() {
         $url = "http://meta.hamburg.freifunk.net/ffhh.json";
     }
     echo "<input type='text' name='ff_meta_url' id='ff_meta_url_id' class='large-text code' value='$url' />"
-        ."<p class='description'>This will be the default for all tags without url=\"xyz\" parameter.</p>";
+        ."<p class='description'>This will be the default for all tags without url=\"xyz\" or city parameter.</p>";
 }
 
 function ff_meta_options_page() {

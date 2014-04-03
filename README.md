@@ -20,7 +20,7 @@ Text:
 
     Contact Jena:
 
-    [ff_contact url="http://freifunk-jena.de/jena.json"]
+    [ff_contact jena]
 
 Output:
 
