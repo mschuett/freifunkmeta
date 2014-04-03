@@ -14,8 +14,9 @@ function ff_meta_getmetadata ($url) {
     
     // Caching
     if ( false === ( $metajson = get_transient( "ff_metadata_${url_hash}" ) ) ) {
-        $metajson = wp_remote_retrieve_body( wp_remote_get($url) );
-        set_transient( "ff_metadata_${url_hash}", $metajson, 1 * HOUR_IN_SECONDS );
+        $metajson  = wp_remote_retrieve_body( wp_remote_get($url) );
+        $cachetime = get_option( 'ff_meta_cachetime' ) * MINUTE_IN_SECONDS;
+        set_transient( "ff_metadata_${url_hash}", $metajson, $cachetime );
     }
     $metadata = json_decode ( $metajson, $assoc = true );
     return $metadata;
@@ -133,9 +134,9 @@ function ff_meta_admin_init() {
         'ff_meta_plugin'                // page to display on
     );
     add_settings_field(
-        'ff_meta_dir',           // ID
-        'URL of directory.json', // Title
-        'ff_meta_dir_callback',  // callback to fill field
+        'ff_meta_cachetime',     // ID
+        'Cache time',            // Title
+        'ff_meta_cachetime_callback', // callback to fill field
         'ff_meta_plugin',        // menu page=slug to display field on
         'ff_meta_section-one'    // section to display the field in
     );
@@ -146,10 +147,26 @@ function ff_meta_admin_init() {
         'ff_meta_plugin',        // menu page=slug to display field on
         'ff_meta_section-one'    // section to display the field in
     );
+    add_settings_field(
+        'ff_meta_dir',           // ID
+        'URL of directory.json', // Title
+        'ff_meta_dir_callback',  // callback to fill field
+        'ff_meta_plugin',        // menu page=slug to display field on
+        'ff_meta_section-one'    // section to display the field in
+    );
 }
 
 function ff_meta_section_one_callback() {
     echo 'This Plugin provides shortcodes to display information from the Freifunk meta.json.';
+}
+
+function ff_meta_cachetime_callback() {
+    $time = get_option( 'ff_meta_cachetime' );
+    if (empty($time)) {
+        $time = "15";
+    }
+    echo "<input type='number' name='ff_meta_cachetime' class='small-text code' value='$time' /> minutes"
+        ."<p class='description'>Data from external URLs is cached for this number of minutes.</p>";
 }
 
 function ff_meta_dir_callback() {
@@ -157,7 +174,8 @@ function ff_meta_dir_callback() {
     if (empty($url)) {
         $url = "https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json";
     }
-    echo "<input type='text' name='ff_meta_dir' class='large-text code' value='$url' />";
+    echo "<input type='text' name='ff_meta_dir' class='large-text code' value='$url' />"
+        ."<p class='description'>Please keep the default unless you really know what you are doing.</p>";
 }
 
 function ff_meta_url_callback() {
@@ -165,7 +183,8 @@ function ff_meta_url_callback() {
     if (empty($url)) {
         $url = "http://meta.hamburg.freifunk.net/ffhh.json";
     }
-    echo "<input type='text' name='ff_meta_url' class='large-text code' value='$url' />";
+    echo "<input type='text' name='ff_meta_url' class='large-text code' value='$url' />"
+        ."<p class='description'>This will be the default for all tags without url=\"xyz\" parameter.</p>";
 }
 
 function ff_meta_options_page() {
