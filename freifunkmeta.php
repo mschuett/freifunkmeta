@@ -8,6 +8,10 @@ Author: Martin Schuette
 Author URI: http://mschuette.name/
 */
 
+define('FF_META_DEFAULT_CACHETIME', 15);
+define('FF_META_DEFAULT_DIR', 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json');
+define('FF_META_DEFAULT_URL', 'http://meta.hamburg.freifunk.net/ffhh.json');
+
 /* gets metadata from URL, handles caching */
 function ff_meta_getmetadata ($url) {
     $url_hash = hash('crc32', $url);
@@ -15,7 +19,7 @@ function ff_meta_getmetadata ($url) {
     // Caching
     if ( false === ( $metajson = get_transient( "ff_metadata_${url_hash}" ) ) ) {
         $metajson  = wp_remote_retrieve_body( wp_remote_get($url) );
-        $cachetime = get_option( 'ff_meta_cachetime' ) * MINUTE_IN_SECONDS;
+        $cachetime = get_option( 'ff_meta_cachetime', FF_META_DEFAULT_CACHETIME) * MINUTE_IN_SECONDS;
         set_transient( "ff_metadata_${url_hash}", $metajson, $cachetime );
     }
     $metadata = json_decode ( $metajson, $assoc = true );
@@ -36,7 +40,7 @@ if ( ! shortcode_exists( 'ff_contact' ) ) {
 // [ff_state hamburg]
 // [ff_state url="http://meta.hamburg.freifunk.net/ffhh.json"]
 function ff_meta_shortcode_handler( $atts, $content, $name ) {
-    $default_url = get_option( 'ff_meta_url' );
+    $default_url = get_option( 'ff_meta_url', FF_META_DEFAULT_URL );
     extract(shortcode_atts( array(
         'url' => $default_url,
     ), $atts));
@@ -44,7 +48,7 @@ function ff_meta_shortcode_handler( $atts, $content, $name ) {
     // check for city name
     if (!empty($atts[0])) {
         $city = $atts[0];
-        if (false === ($directory = ff_meta_getmetadata (get_option( 'ff_meta_dir' )))
+        if (false === ($directory = ff_meta_getmetadata (get_option( 'ff_meta_dir', FF_META_DEFAULT_DIR )))
             || empty($directory[$city])) {
             return '';
         }
@@ -183,28 +187,19 @@ function ff_meta_section_one_callback() {
 }
 
 function ff_meta_cachetime_callback() {
-    $time = get_option( 'ff_meta_cachetime' );
-    if (empty($time)) {
-        $time = "15";
-    }
+    $time = get_option( 'ff_meta_cachetime', FF_META_DEFAULT_CACHETIME );
     echo "<input type='number' name='ff_meta_cachetime' id='ff_meta_cachetime_id' class='small-text code' value='$time' /> minutes"
         ."<p class='description'>Data from external URLs is cached for this number of minutes.</p>";
 }
 
 function ff_meta_dir_callback() {
-    $url = get_option( 'ff_meta_dir' );
-    if (empty($url)) {
-        $url = "https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json";
-    }
+    $url = get_option( 'ff_meta_dir', FF_META_DEFAULT_DIR );
     echo "<input type='text' name='ff_meta_dir' id='ff_meta_dir_id' class='large-text code' value='$url' />"
         ."<p class='description'>Please keep the default unless you really know what you are doing.</p>";
 }
 
 function ff_meta_url_callback() {
-    $url = get_option( 'ff_meta_url' );
-    if (empty($url)) {
-        $url = "http://meta.hamburg.freifunk.net/ffhh.json";
-    }
+    $url = get_option( 'ff_meta_url', FF_META_DEFAULT_URL );
     echo "<input type='text' name='ff_meta_url' id='ff_meta_url_id' class='large-text code' value='$url' />"
         ."<p class='description'>This will be the default for all tags without url=\"xyz\" or city parameter.</p>";
 }
