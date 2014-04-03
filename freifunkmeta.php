@@ -48,7 +48,7 @@ function ff_meta_shortcode_handler( $atts, $content, $name ) {
     // check for city name
     if (!empty($atts[0])) {
         $city = $atts[0];
-        if (false === ($directory = ff_meta_getmetadata (get_option( 'ff_meta_dir', FF_META_DEFAULT_DIR )))
+        if (false === ($directory = ff_meta_getmetadata ( FF_META_DEFAULT_DIR ))
             || empty($directory[$city])) {
             return '';
         }
@@ -146,10 +146,6 @@ function ff_meta_admin_init() {
         'ff_meta_settings-group', // group name
         'ff_meta_url'             // option name
     );
-    register_setting(
-        'ff_meta_settings-group', // group name
-        'ff_meta_dir'             // option name
-    );
     add_settings_section(
         'ff_meta_section-one',          // ID
         'Section One',                  // Title
@@ -172,14 +168,6 @@ function ff_meta_admin_init() {
         'ff_meta_section-one',   // section to display the field in
         array('label_for' => 'ff_meta_url_id')  // ID of input element
     );
-    add_settings_field(
-        'ff_meta_dir',           // ID
-        'URL of directory.json', // Title
-        'ff_meta_dir_callback',  // callback to fill field
-        'ff_meta_plugin',        // menu page=slug to display field on
-        'ff_meta_section-one',   // section to display the field in
-        array('label_for' => 'ff_meta_dir_id')  // ID of input element
-    );
 }
 
 function ff_meta_section_one_callback() {
@@ -190,12 +178,6 @@ function ff_meta_cachetime_callback() {
     $time = get_option( 'ff_meta_cachetime', FF_META_DEFAULT_CACHETIME );
     echo "<input type='number' name='ff_meta_cachetime' id='ff_meta_cachetime_id' class='small-text code' value='$time' /> minutes"
         ."<p class='description'>Data from external URLs is cached for this number of minutes.</p>";
-}
-
-function ff_meta_dir_callback() {
-    $url = get_option( 'ff_meta_dir', FF_META_DEFAULT_DIR );
-    echo "<input type='text' name='ff_meta_dir' id='ff_meta_dir_id' class='large-text code' value='$url' />"
-        ."<p class='description'>Please keep the default unless you really know what you are doing.</p>";
 }
 
 function ff_meta_url_callback() {
