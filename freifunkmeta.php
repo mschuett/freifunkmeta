@@ -125,7 +125,15 @@ add_action( 'admin_init', 'ff_meta_admin_init' );
 function ff_meta_admin_init() {
     register_setting(
         'ff_meta_settings-group', // group name
+        'ff_meta_cachetime'       // option name
+    );
+    register_setting(
+        'ff_meta_settings-group', // group name
         'ff_meta_url'             // option name
+    );
+    register_setting(
+        'ff_meta_settings-group', // group name
+        'ff_meta_dir'             // option name
     );
     add_settings_section(
         'ff_meta_section-one',          // ID
@@ -138,21 +146,24 @@ function ff_meta_admin_init() {
         'Cache time',            // Title
         'ff_meta_cachetime_callback', // callback to fill field
         'ff_meta_plugin',        // menu page=slug to display field on
-        'ff_meta_section-one'    // section to display the field in
+        'ff_meta_section-one',   // section to display the field in
+        array('label_for' => 'ff_meta_cachetime_id')  // ID of input element
     );
     add_settings_field(
         'ff_meta_url',           // ID
         'URL of meta.json',      // Title
         'ff_meta_url_callback',  // callback to fill field
         'ff_meta_plugin',        // menu page=slug to display field on
-        'ff_meta_section-one'    // section to display the field in
+        'ff_meta_section-one',   // section to display the field in
+        array('label_for' => 'ff_meta_url_id')  // ID of input element
     );
     add_settings_field(
         'ff_meta_dir',           // ID
         'URL of directory.json', // Title
         'ff_meta_dir_callback',  // callback to fill field
         'ff_meta_plugin',        // menu page=slug to display field on
-        'ff_meta_section-one'    // section to display the field in
+        'ff_meta_section-one',   // section to display the field in
+        array('label_for' => 'ff_meta_dir_id')  // ID of input element
     );
 }
 
@@ -165,7 +176,7 @@ function ff_meta_cachetime_callback() {
     if (empty($time)) {
         $time = "15";
     }
-    echo "<input type='number' name='ff_meta_cachetime' class='small-text code' value='$time' /> minutes"
+    echo "<input type='number' name='ff_meta_cachetime' id='ff_meta_cachetime_id' class='small-text code' value='$time' /> minutes"
         ."<p class='description'>Data from external URLs is cached for this number of minutes.</p>";
 }
 
@@ -174,7 +185,7 @@ function ff_meta_dir_callback() {
     if (empty($url)) {
         $url = "https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json";
     }
-    echo "<input type='text' name='ff_meta_dir' class='large-text code' value='$url' />"
+    echo "<input type='text' name='ff_meta_dir' id='ff_meta_dir_id' class='large-text code' value='$url' />"
         ."<p class='description'>Please keep the default unless you really know what you are doing.</p>";
 }
 
@@ -183,7 +194,7 @@ function ff_meta_url_callback() {
     if (empty($url)) {
         $url = "http://meta.hamburg.freifunk.net/ffhh.json";
     }
-    echo "<input type='text' name='ff_meta_url' class='large-text code' value='$url' />"
+    echo "<input type='text' name='ff_meta_url' id='ff_meta_url_id' class='large-text code' value='$url' />"
         ."<p class='description'>This will be the default for all tags without url=\"xyz\" parameter.</p>";
 }
 
