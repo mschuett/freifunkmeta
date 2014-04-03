@@ -133,6 +133,13 @@ function ff_meta_admin_init() {
         'ff_meta_plugin'                // page to display on
     );
     add_settings_field(
+        'ff_meta_dir',           // ID
+        'URL of directory.json', // Title
+        'ff_meta_dir_callback',  // callback to fill field
+        'ff_meta_plugin',        // menu page=slug to display field on
+        'ff_meta_section-one'    // section to display the field in
+    );
+    add_settings_field(
         'ff_meta_url',           // ID
         'URL of meta.json',      // Title
         'ff_meta_url_callback',  // callback to fill field
@@ -145,9 +152,20 @@ function ff_meta_section_one_callback() {
     echo 'This Plugin provides shortcodes to display information from the Freifunk meta.json.';
 }
 
+function ff_meta_dir_callback() {
+    $url = get_option( 'ff_meta_dir' );
+    if (empty($url)) {
+        $url = "https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json";
+    }
+    echo "<input type='text' name='ff_meta_dir' class='large-text code' value='$url' />";
+}
+
 function ff_meta_url_callback() {
     $url = get_option( 'ff_meta_url' );
-    echo "<input type='text' name='ff_meta_url' value='$url' />";
+    if (empty($url)) {
+        $url = "http://meta.hamburg.freifunk.net/ffhh.json";
+    }
+    echo "<input type='text' name='ff_meta_url' class='large-text code' value='$url' />";
 }
 
 function ff_meta_options_page() {
