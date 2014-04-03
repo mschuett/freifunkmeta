@@ -10,7 +10,7 @@ Author URI: http://mschuette.name/
 
 define('FF_META_DEFAULT_CACHETIME', 15);
 define('FF_META_DEFAULT_DIR', 'https://raw.githubusercontent.com/freifunk/directory.api.freifunk.net/master/directory.json');
-define('FF_META_DEFAULT_URL', 'http://meta.hamburg.freifunk.net/ffhh.json');
+define('FF_META_DEFAULT_CITY', 'hamburg');
 
 /* gets metadata from URL, handles caching */
 function ff_meta_getmetadata ($url) {
@@ -38,25 +38,22 @@ if ( ! shortcode_exists( 'ff_contact' ) ) {
 // Example:
 // [ff_state]
 // [ff_state hamburg]
-// [ff_state url="http://meta.hamburg.freifunk.net/ffhh.json"]
 function ff_meta_shortcode_handler( $atts, $content, $name ) {
-    $default_url = get_option( 'ff_meta_url', FF_META_DEFAULT_URL );
-    extract(shortcode_atts( array(
-        'url' => $default_url,
-    ), $atts));
-
-    // check for city name
-    if (!empty($atts[0])) {
+    // $atts[0] holds the city name, if given
+    if (empty($atts[0])) {
+        $city = get_option( 'ff_meta_city', FF_META_DEFAULT_CITY );
+    } else {
         $city = $atts[0];
-        if (false === ($directory = ff_meta_getmetadata ( FF_META_DEFAULT_DIR ))
-            || empty($directory[$city])) {
-            return '';
-        }
-        $url = $directory[$city];
     }
 
-    if (empty($url) || false === ($metadata = ff_meta_getmetadata ($url))) {
-        return '';
+    if (false === ($directory = ff_meta_getmetadata ( FF_META_DEFAULT_DIR ))
+        || empty($directory[$city])) {
+        return "<!-- FF Meta Error: cannot get directory.json, or no URL for '$city' -->\n";
+    }
+    $url = $directory[$city];
+
+    if (false === ($metadata = ff_meta_getmetadata ($url))) {
+        return "<!-- FF Meta Error: cannot get metadata from $url -->\n";
     }
 
     $outstr = "<div class=\"ff $name\">";
@@ -67,12 +64,14 @@ function ff_meta_shortcode_handler( $atts, $content, $name ) {
             break;
 
         case 'ff_services':
-            $services = $metadata['services'];
             $outstr .= '<ul>';
-            foreach ($services as $service) {
-                $outstr .= sprintf('<li>%s (%s): <a href="%s">%s</a></li>',
-                             $service['serviceName'], $service['serviceDescription'],
-                             $service['internalUri'], $service['internalUri']);
+            if (isset($metadata['services'])) {
+                $services = $metadata['services'];
+                foreach ($services as $service) {
+                    $outstr .= sprintf('<li>%s (%s): <a href="%s">%s</a></li>',
+                                 $service['serviceName'], $service['serviceDescription'],
+                                 $service['internalUri'], $service['internalUri']);
+                }
             }
             $outstr .= '</ul>';
             break;
@@ -144,7 +143,7 @@ function ff_meta_admin_init() {
     );
     register_setting(
         'ff_meta_settings-group', // group name
-        'ff_meta_url'             // option name
+        'ff_meta_city'            // option name
     );
     add_settings_section(
         'ff_meta_section-one',          // ID
@@ -153,20 +152,20 @@ function ff_meta_admin_init() {
         'ff_meta_plugin'                // page to display on
     );
     add_settings_field(
+        'ff_meta_city',          // ID
+        'Default community',     // Title
+        'ff_meta_city_callback',  // callback to fill field
+        'ff_meta_plugin',        // menu page=slug to display field on
+        'ff_meta_section-one',   // section to display the field in
+        array('label_for' => 'ff_meta_city_id')  // ID of input element
+    );
+    add_settings_field(
         'ff_meta_cachetime',     // ID
         'Cache time',            // Title
         'ff_meta_cachetime_callback', // callback to fill field
         'ff_meta_plugin',        // menu page=slug to display field on
         'ff_meta_section-one',   // section to display the field in
         array('label_for' => 'ff_meta_cachetime_id')  // ID of input element
-    );
-    add_settings_field(
-        'ff_meta_url',           // ID
-        'URL of meta.json',      // Title
-        'ff_meta_url_callback',  // callback to fill field
-        'ff_meta_plugin',        // menu page=slug to display field on
-        'ff_meta_section-one',   // section to display the field in
-        array('label_for' => 'ff_meta_url_id')  // ID of input element
     );
 }
 
@@ -180,10 +179,21 @@ function ff_meta_cachetime_callback() {
         ."<p class='description'>Data from external URLs is cached for this number of minutes.</p>";
 }
 
-function ff_meta_url_callback() {
-    $url = get_option( 'ff_meta_url', FF_META_DEFAULT_URL );
-    echo "<input type='text' name='ff_meta_url' id='ff_meta_url_id' class='large-text code' value='$url' />"
-        ."<p class='description'>This will be the default for all tags without url=\"xyz\" or city parameter.</p>";
+function ff_meta_city_callback() {
+    if (false === ($directory = ff_meta_getmetadata ( FF_META_DEFAULT_DIR ))) {
+        // TODO: error handling
+        return;
+    }
+    $default_city = get_option( 'ff_meta_city', FF_META_DEFAULT_CITY );
+
+    echo "<select name='ff_meta_city' id='ff_meta_city_id' size='1'>";
+    foreach (array_keys($directory) as $city) {
+        $prettycity = ucwords(str_replace(array('_', '-'), ' ', $city));
+        $selected = selected( $default_city, $city );
+        echo "<option value='$city' $selected>$prettycity</option>";
+    }
+    echo "</select>";
+    echo "<p class='description'>This is the default city parameter.</p>";
 }
 
 function ff_meta_options_page() {
