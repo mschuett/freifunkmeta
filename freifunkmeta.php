@@ -209,3 +209,8 @@ function ff_meta_options_page() {
     <?php
 }
 
+register_uninstall_hook( __FILE__, 'ff_meta_uninstall_hook' );
+function ff_meta_uninstall_hook() {
+    delete_option( 'ff_meta_city' );
+    delete_option( 'ff_meta_cachetime' );
+}
