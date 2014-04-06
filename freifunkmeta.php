@@ -35,6 +35,9 @@ if ( ! shortcode_exists( 'ff_services' ) ) {
 if ( ! shortcode_exists( 'ff_contact' ) ) {
     add_shortcode( 'ff_contact',  'ff_meta_shortcode_handler');
 }
+if ( ! shortcode_exists( 'ff_location' ) ) {
+    add_shortcode( 'ff_location', 'ff_meta_shortcode_handler');
+}
 // Example:
 // [ff_state]
 // [ff_state hamburg]
@@ -61,6 +64,94 @@ function ff_meta_shortcode_handler( $atts, $content, $name ) {
         case 'ff_state':
             $state = $metadata['state'];
             $outstr .= sprintf('%s', $state['nodes']);
+            break;
+
+        case 'ff_location':
+            // normal per-city code
+            $loc = $metadata['location'];
+            $loc_name   = (isset($loc['address']) && isset($loc['address']['Name']))    ? $loc['address']['Name']    : '';
+            $loc_street = (isset($loc['address']) && isset($loc['address']['Street']))  ? $loc['address']['Street']  : '';
+            $loc_zip    = (isset($loc['address']) && isset($loc['address']['Zipcode'])) ? $loc['address']['Zipcode'] : '';
+            $loc_city   = isset($loc['city']) ? $loc['city'] : '';
+            $loc_lon    = isset($loc['lon'])  ? $loc['lon']  : '';
+            $loc_lat    = isset($loc['lat'])  ? $loc['lat']  : '';
+            if (empty($loc_name) || empty($loc_street) || empty($loc_zip)) {
+                return '';
+            }
+
+            // TODO: style address + map as single box
+            // TODO: once it is "ready" package openlayers.js into the plugin (cf. http://docs.openlayers.org/library/deploying.html)
+            // TODO: handle missing values (i.e. only name & city)
+            $outstr .= '<p>';
+            $outstr .= sprintf('%s<br/>%s<br/>%s %s',
+                       $loc_name, $loc_street, $loc_zip, $loc_city);
+            $outstr .= '</p>';
+
+            // gather all location data
+            if ( false === ( $json_locs = get_transient( "ff_metadata_json_locs" ) ) ) {
+                $all_locs   = array();
+                $arr_select = array('lat' => 1, 'lon' => 1);
+                foreach ($directory as $tmp_city => $url) {
+                    try {
+                        $tmp_meta = ff_meta_getmetadata($url);
+                        if (!empty($tmp_meta['location'])) {
+                            $tmp_loc  = array_intersect_key($tmp_meta['location'], $arr_select);
+                            $all_locs[$tmp_city] = $tmp_loc;
+                        }
+                    } catch (Exception $e) {
+                        // pass
+                    }
+                }
+                $json_locs = json_encode($all_locs);
+                $cachetime = get_option( 'ff_meta_cachetime', FF_META_DEFAULT_CACHETIME) * MINUTE_IN_SECONDS;
+                set_transient( "ff_metadata_json_locs", $json_locs, $cachetime );
+            }
+
+            if ( !empty($loc_name) && !empty($loc_name) ) {
+                $icon_url = plugin_dir_url(__FILE__) . "freifunk_marker.png";
+                $outstr .= <<<EOT
+  <div id="mapdiv_$loc_city" style="width: 75%; height: 15em;"></div>
+ 
+  <style type="text/css"> <!--
+  /* There seems to be a bug in OpenLayers' style.css (?). Original bottom:4.5em is far too high. */
+  #OpenLayers_Control_Attribution_7 { bottom: 3px; }
+  --></style>
+
+  <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
+  <script>
+    map = new OpenLayers.Map("mapdiv_$loc_city");
+    map.addLayer(new OpenLayers.Layer.OSM());
+
+    var lonLat = new OpenLayers.LonLat( $loc_lon, $loc_lat )
+          .transform(
+            new OpenLayers.Projection("EPSG:4326"), // transform from WGS 1984
+            map.getProjectionObject() // to Spherical Mercator Projection
+          );
+ 
+    var markers = new OpenLayers.Layer.Markers( "Markers" );
+    map.addLayer(markers);
+ 
+    markers.addMarker(new OpenLayers.Marker(lonLat));
+
+    var size = new OpenLayers.Size(20,16);
+    var offset = new OpenLayers.Pixel(0, -(size.h/2)); 
+    var icon = new OpenLayers.Icon('$icon_url',size,offset);
+
+    var ff_loc = $json_locs;
+    delete ff_loc["$city"];
+    for (key in ff_loc) {
+        markers.addMarker(new OpenLayers.Marker(
+            new OpenLayers.LonLat( ff_loc[key]['lon'], ff_loc[key]['lat'] )
+            .transform(new OpenLayers.Projection("EPSG:4326"),map.getProjectionObject()),
+            icon.clone()
+        ));
+    }
+
+    var zoom=12;
+    map.setCenter (lonLat, zoom);
+  </script>
+EOT;
+            }
             break;
 
         case 'ff_services':
