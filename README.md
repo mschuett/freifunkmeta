@@ -4,7 +4,9 @@ A small Wordpress plugin to render Freifunk metadata according to the [api.freif
 
 It reads (and caches) JSON input from a configured URL and provides shortcodes to output the data.
 
-Currently implemented are `[ff_services]` and `[ff_contact]`.
+Currently implemented are `[ff_services]`, `[ff_contact]`, and `[ff_state]`.
+
+An `[ff_location]` is also usable, but needs more work.
 
 ## Example
 
