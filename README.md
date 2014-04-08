@@ -30,7 +30,7 @@ Text:
 
 Output:
 
-![ff_location output example])(http://mschuette.name/wp/wp-upload/freifunk_meta_location_sample.png)
+![_location output example](http://mschuette.name/wp/wp-upload/freifunk_meta_location_sample.png)
 
 ![shortcode output example](http://mschuette.name/wp/wp-upload/freifunk_meta_example.png)
 
