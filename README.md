@@ -12,6 +12,10 @@ An `[ff_location]` is also usable, but needs more work.
 
 Text:
 
+    Location:
+
+    [ff_location]
+
     Services:
 
     [ff_services]
@@ -26,4 +30,7 @@ Text:
 
 Output:
 
+![ff_location output example])(http://mschuette.name/wp/wp-upload/freifunk_meta_location_sample.png)
+
 ![shortcode output example](http://mschuette.name/wp/wp-upload/freifunk_meta_example.png)
+
