@@ -1,0 +1,41 @@
+{
+  "name": "Freifunk Frankfurt am Main - ffffm",
+  "url": "http://www.wifi-frankfurt.de/",
+  "state": {
+    "nodes": 4,
+    "lastchange": 0,
+    "message": "open for public"
+  },
+  "location": {
+    "city": "Frankfurt am Main",
+    "lat": 50.110556,
+    "lon": 8.682222
+  },
+  "contact": {
+    "email": "info@wifi-frankfurt.de",
+    "irc": "#freifunk on freenode",
+    "ml": "user@wifi-frankfurt.de",
+    "twitter": "https://twitter.com/FreiFunkFFM"
+  },
+  "techDetails": {
+    "stoererhaftung": "VPN",
+    "firmware": {
+      "url": "http://wiki.freifunk.net/Firmware_Flashen"
+    },
+    "networks": {
+      "ipv4": [
+        {
+          "netmask": 16,
+          "network": "10.126.0.0"
+        }
+      ]
+    },
+    "routing": "BATMAN",
+    "splashpage": "none"
+  },
+  "state": {
+    "lastchange": 1391267102
+  },
+  "api": "0.1"
+}
+

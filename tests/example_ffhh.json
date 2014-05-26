@@ -1,0 +1,107 @@
+{
+  "name": "Freifunk Hamburg",
+  "api": "0.3.0",
+  "url": "https://hamburg.freifunk.net",
+  "techDetails": {
+    "updatemode": "autoupdater",
+    "bootstrap": "http://formular.hamburg.freifunk.net",
+    "splashpage": "none",
+    "firmware": {
+      "url": "https://hamburg.freifunk.net/anleitung",
+      "name": "gluon"
+    },
+    "routing": "batman-adv",
+    "tld": {
+      "nameserver": [
+        "10.112.1.1",
+        "10.112.14.1"
+      ],
+      "domainname": "ffhh"
+    },
+    "vpn": "fastd",
+    "stoererhaftung": "VPN in die Niederlande",
+    "networks": {
+      "ipv4": [
+        {
+          "network": "10.112.0.0/18"
+        }
+      ],
+      "ipv6": [
+        {
+          "network": "fd51:2bb2:fd0d::/48"
+        }
+      ]
+    }
+  },
+  "state": {
+    "nodes": 429,
+    "lastchange": "2014-04-27T12:50:01.842182",
+    "message": "open for public"
+  },
+  "contact": {
+    "ml": "freifunk@hamburg.ccc.de",
+    "twitter": "@FreifunkHH",
+    "irc": "irc://irc.hackint.net/ffhh",
+    "facebook": "https://www.facebook.com/FreifunkHamburg",
+    "email": "kontakt@hamburg.freifunk.net"
+  },
+  "location": {
+    "lat": 53.574267,
+    "city": "Hamburg",
+    "lon": 10.024418,
+    "address": {
+      "Street": "Humboldtstr. 53",
+      "Name": "Chaos Computer Club Hansestadt Hamburg",
+      "Zipcode": "22083"
+    }
+  },
+  "services": [
+    {
+      "internalUri": "xmpp://jabber.ffhh",
+      "serviceName": "jabber",
+      "serviceDescription": "Chat"
+    },
+    {
+      "internalUri": "nntp://news.services.ffhh",
+      "serviceName": "news",
+      "serviceDescription": "Newsserver"
+    },
+    {
+      "internalUri": "http://radio.ffhh",
+      "serviceName": "radio",
+      "serviceDescription": "CC Musik und freisprech podcast"
+    }
+  ],
+  "nodeMaps": [
+    {
+      "url": "http://knotenkarte.de",
+      "interval": "1 min",
+      "technicalType": "ffmap",
+      "mapType": "geographical"
+    },
+    {
+      "url": "http://knotengraph.de",
+      "interval": "1 min",
+      "technicalType": "ffmap",
+      "mapType": "structural"
+    },
+    {
+      "url": "http://graph.hamburg.freifunk.net/list.html",
+      "interval": "1 min",
+      "technicalType": "ffmap",
+      "mapType": "list/status"
+    }
+  ],
+  "feeds": [
+    {
+      "category": "blog",
+      "url": "https://hamburg.freifunk.net/?feed=rss2",
+      "type": "rss"
+    },
+    {
+      "category": "others",
+      "url": "https://hamburg.freifunk.net/feed/freisprech-mp3/?feed=rss2",
+      "type": "rss"
+    }
+  ]
+}
