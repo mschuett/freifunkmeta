@@ -40,7 +40,8 @@ class FF_Directory
     private $directory;
 
     function __construct() {
-        $this->directory = FF_Meta_Externaldata::get(FF_META_DEFAULT_DIR);
+        $ed = new FF_Meta_Externaldata();
+        $this->directory = $ed->get(FF_META_DEFAULT_DIR);
     }
 
     function get_url_by_city($city) {
