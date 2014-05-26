@@ -266,6 +266,10 @@ EOT;
         return $outstr;
     }
 
+    function output_ff_list() {
+        return 'here be some ff_list';
+    }
+    
     function shortcode_handler($atts, $content, $shortcode) {
         // $atts[0] holds the city name, if given
         if (empty($atts[0])) {
@@ -295,6 +299,9 @@ EOT;
             break;
         case 'ff_contact':
             $outstr .= $this->output_ff_contact($metadata);
+            break;
+        case 'ff_list':
+            $outstr .= $this->output_ff_list();
             break;
         default:
             $outstr .= "";
