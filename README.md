@@ -1,5 +1,7 @@
 # Freifunk Metadata Wordpress Plugin
 
+[![Build Status](https://travis-ci.org/mschuett/freifunkmeta.svg?branch=master)](https://travis-ci.org/mschuett/freifunkmeta)
+
 A small Wordpress plugin to render Freifunk metadata according to the [api.freifunk.net](https://github.com/freifunk/api.freifunk.net) specification ([german description](http://freifunk.net/blog/2013/12/die-freifunk-api/)).
 
 It reads (and caches) JSON input from a configured URL and provides shortcodes to output the data.
