@@ -24,7 +24,8 @@ class FF_Meta_Externaldata
 
         // Caching
         if ( false === ( $data = get_transient($cachekey) ) ) {
-            $json = wp_remote_retrieve_body(wp_remote_get($url));
+            $http_response = wp_remote_get($url);
+            $json = wp_remote_retrieve_body($http_response);
             $data = json_decode ($json, $assoc = true);
             set_transient( $cachekey, $data, $cachetime );
         }
