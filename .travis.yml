@@ -6,16 +6,14 @@ php:
     - 5.5
     - 5.6
     - hhvm
-    - hhvm-nightly
-
-os:
-    - linux
-    - osx
 
 env:
-    - WP_VERSION=latest WP_MULTISITE=0
+    - WP_VERSION=3.7
+    - WP_VERSION=3.8
+    - WP_VERSION=latest
 
 before_script:
-    - bash bin/install-wp-tests.sh wordpress_test root '' localhost $WP_VERSION 
+    - bash bin/install-wp-tests.sh wordpress_test root '' localhost $WP_VERSION
+    - fgrep wp_version $WP_TESTS_DIR/wp-includes/version.php
 
 script: phpunit
