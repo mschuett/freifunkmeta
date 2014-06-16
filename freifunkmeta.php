@@ -14,20 +14,34 @@ define( 'FF_META_DEFAULT_CITY', 'hamburg' );
 
 /**
  * class to fetch and cache data from external URLs
+ * returns either an array from decoded JSON data, or WP_Error
  */
 class FF_Meta_Externaldata
 {
 	public function get( $url ) {
-		/* gets metadata from URL, handles caching */
+		//error_log( "FF_Meta_Externaldata::get( $url )" );
+		/* gets metadata from URL, handles caching,
+		* hashed because cache keys should be <= 40 chars */
 		$cachekey  = 'ff_metadata_'.hash( 'crc32', $url );
-		$cachetime = get_option( 'ff_meta_cachetime', FF_META_DEFAULT_CACHETIME ) * MINUTE_IN_SECONDS;
+		$cachetime = get_option(
+			'ff_meta_cachetime', FF_META_DEFAULT_CACHETIME
+		) * MINUTE_IN_SECONDS;
 
 		// Caching
-		if ( false === ( $data = get_transient( $cachekey ) ) ) {
+		if ( WP_DEBUG || ( false === ( $data = get_transient( $cachekey ) ) ) ) {
 			$http_response = wp_remote_get( $url );
-			$json = wp_remote_retrieve_body( $http_response );
-			$data = json_decode( $json, $assoc = true );
-			set_transient( $cachekey, $data, $cachetime );
+			if ( is_wp_error( $http_response ) ) {
+				$error_msg = sprintf(
+						'Unable to retrieve URL %s, error: %s',
+						$url, $http_response->get_error_message()
+					);
+				error_log( $error_msg, 4 );
+				return $http_response;
+			} else {
+				$json = wp_remote_retrieve_body( $http_response );
+				$data = json_decode( $json, $assoc = true );
+				set_transient( $cachekey, $data, $cachetime );
+			}
 		}
 		return $data;
 	}
@@ -40,18 +54,25 @@ class FF_Directory
 {
 	private $directory;
 
-	function __construct() {
-		$ed = new FF_Meta_Externaldata();
-		$this->directory = $ed->get( FF_META_DEFAULT_DIR );
+	function __construct( $ext_data_service = null ) {
+		if ( is_null( $ext_data_service ) ) {
+			$ed = new FF_Meta_Externaldata();
+		} else {
+			$ed = $ext_data_service;
+		}
+		$data = $ed->get( FF_META_DEFAULT_DIR );
+		if ( is_wp_error( $data ) ) {
+			$this->directory = array();
+		} else {
+			$this->directory = $data;
+		}
 	}
 
 	function get_url_by_city( $city ) {
-		$val = $this->directory[$city];
-
-		if ( empty( $val ) ) {
-			return false;
+		if ( array_key_exists( $city, $this->directory ) ) {
+			return $this->directory[$city];
 		} else {
-			return $val;
+			return false;
 		}
 	}
 }
@@ -73,9 +94,12 @@ class FF_Community
 	 */
 	function __construct( $metadata ) {
 		$loc = $metadata['location'];
-		$this->name   = ( isset( $loc['address'] ) && isset( $loc['address']['Name'] ) )    ? $loc['address']['Name']    : '';
-		$this->street = ( isset( $loc['address'] ) && isset( $loc['address']['Street'] ) )  ? $loc['address']['Street']  : '';
-		$this->zip    = ( isset( $loc['address'] ) && isset( $loc['address']['Zipcode'] ) ) ? $loc['address']['Zipcode'] : '';
+		$this->name   = ( isset( $loc['address'] ) && isset( $loc['address']['Name'] ) )
+						? $loc['address']['Name']    : '';
+		$this->street = ( isset( $loc['address'] ) && isset( $loc['address']['Street'] ) )
+						? $loc['address']['Street']  : '';
+		$this->zip    = ( isset( $loc['address'] ) && isset( $loc['address']['Zipcode'] ) )
+						? $loc['address']['Zipcode'] : '';
 		$this->city   = isset( $loc['city'] ) ? $loc['city'] : '';
 		$this->lon    = isset( $loc['lon'] )  ? $loc['lon']  : '';
 		$this->lat    = isset( $loc['lat'] )  ? $loc['lat']  : '';
@@ -84,12 +108,19 @@ class FF_Community
 	/**
 	 * Alternative constructor from city name
 	 */
-	static function make_from_city( $city ) {
-		// TODO: test
-		if ( false === ( $url = $this->dir->get_url_by_city( $city ) ) ) {
-			return "<!-- FF Meta Error: cannot get directory.json, or no URL for '$city' -->\n";
+	static function make_from_city( $city, $ext_data_service = null ) {
+		if ( is_null( $ext_data_service ) ) {
+			$ed = new FF_Meta_Externaldata();
+		} else {
+			$ed = $ext_data_service;
 		}
-		if ( false === ( $metadata = FF_Meta_Externaldata::get( $url ) ) ) {
+		$directory = new FF_Directory( $ed );
+
+		if ( false === ( $url = $directory->get_url_by_city( $city ) ) ) {
+			return '<!-- FF Meta Error: cannot get directory.json, '.
+					" or no URL for '$city' -->\n";
+		}
+		if ( false === ( $metadata = $ed->get( $url ) ) ) {
 			return "<!-- FF Meta Error: cannot get metadata from $url -->\n";
 		}
 		return new FF_Community( $metadata );
@@ -100,9 +131,13 @@ class FF_Community
 			return '';
 		}
 		// TODO: style address + map as single box
-		// TODO: once it is "ready" package openlayers.js into the plugin ( cf. http://docs.openlayers.org/library/deploying.html )
+		// TODO: once it is "ready" package openlayers.js into the plugin
+		//      ( cf. http://docs.openlayers.org/library/deploying.html )
 		// TODO: handle missing values ( i.e. only name & city )
-		return '<p>' . sprintf( '%s<br/>%s<br/>%s %s', $this->name, $this->street, $this->zip, $this->city ) . '</p>';
+		return sprintf(
+			'<p>%s<br/>%s<br/>%s %s</p>',
+			$this->name, $this->street, $this->zip, $this->city
+		);
 	}
 }
 
@@ -112,9 +147,24 @@ class FF_Community
 class FF_Meta
 {
 	private $dir;
+	private $ed;
 
-	function __construct() {
-		$this->dir = new FF_Directory();
+	function reinit_external_data_service( $ext_data_service = null ) {
+		if ( is_null( $ext_data_service ) ) {
+			$this->ed = new FF_Meta_Externaldata();
+		} else {
+			$this->ed = $ext_data_service;
+		}
+		$this->dir = new FF_Directory( $this->ed );
+	}
+
+	function __construct( $ext_data_service = null ) {
+		if ( is_null( $ext_data_service ) ) {
+			$this->ed = new FF_Meta_Externaldata();
+		} else {
+			$this->ed = $ext_data_service;
+		}
+		$this->dir = new FF_Directory( $this->ed );
 	}
 
 	function register_stuff() {
@@ -137,18 +187,21 @@ class FF_Meta
 	}
 
 	function output_ff_state( $citydata ) {
-		$state = $citydata['state'];
-		return sprintf( '%s', $state['nodes'] );
+		if ( isset( $citydata['state'] ) && isset( $citydata['state']['nodes'] ) ) {
+			return sprintf( '%s', $citydata['state']['nodes'] );
+		} else {
+			return '';
+		}
 	}
 
 	function aux_get_all_locations() {
 		// gather all location data
-		if ( false === ( $json_locs = get_transient( 'FF_metadata_json_locs' ) ) ) {
+		if ( WP_DEBUG || ( false === ( $json_locs = get_transient( 'FF_metadata_json_locs' ) ) ) ) {
 			$all_locs   = array();
 			$arr_select = array( 'lat' => 1, 'lon' => 1 );
 			foreach ( $this->dir as $tmp_city => $url ) {
 				try {
-					$tmp_meta = FF_Meta_Externaldata::get( $url );
+					$tmp_meta = $this->ed->get( $url );
 					if ( ! empty( $tmp_meta['location'] ) ) {
 						$tmp_loc = array_intersect_key( $tmp_meta['location'], $arr_select );
 						$all_locs[$tmp_city] = $tmp_loc;
@@ -170,42 +223,44 @@ class FF_Meta
 		$outstr    = $loc->format_address();
 		$json_locs = $this->aux_get_all_locations();
 
-		if ( ! empty( $loc_name ) && ! empty( $loc_name ) ) {
+		if ( ! empty( $loc->name ) && ! empty( $loc->name ) ) {
 			$icon_url = plugin_dir_url( __FILE__ ) . 'freifunk_marker.png';
+			$loccity  = $loc->city;
 			$outstr  .= <<<EOT
-  <div id="mapdiv_$loc_city" style="width: 75%; height: 15em;"></div>
+  <div id="mapdiv_${loccity}" style="width: 75%; height: 15em;"></div>
 
   <style type="text/css"> <!--
-  /* There seems to be a bug in OpenLayers' style.css ( ? ). Original bottom:4.5em is far too high. */
+  /* There seems to be a bug in OpenLayers' style.css ( ? ).
+   * Original bottom:4.5em is far too high. */
   #OpenLayers_Control_Attribution_7 { bottom: 3px; }
   --></style>
 
   <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
   <script>
-	map = new OpenLayers.Map( "mapdiv_$loc->city" );
-	map.addLayer( new OpenLayers.Layer.OSM( ) );
+	map = new OpenLayers.Map( "mapdiv_${loccity}" );
+	map.addLayer( new OpenLayers.Layer.OSM() );
 
-	var lonLat = new OpenLayers.LonLat(  $loc->lon, $loc->lat  )
+	var lonLat = new OpenLayers.LonLat( $loc->lon, $loc->lat )
 		  .transform(
 			new OpenLayers.Projection( "EPSG:4326" ), // transform from WGS 1984
 			map.getProjectionObject() // to Spherical Mercator Projection
-		   );
+		  );
 
-	var markers = new OpenLayers.Layer.Markers(  "Markers"  );
+	var markers = new OpenLayers.Layer.Markers( "Markers" );
 	map.addLayer( markers );
 
-	markers.addMarker( new OpenLayers.Marker(lonLat ) );
+	markers.addMarker( new OpenLayers.Marker( lonLat ) );
 
 	var size = new OpenLayers.Size( 20,16 );
-	var offset = new OpenLayers.Pixel( 0, -(size.h/2 ) );
+	var offset = new OpenLayers.Pixel( 0, -( size.h/2 ) );
 	var icon = new OpenLayers.Icon( '$icon_url',size,offset );
 
 	var ff_loc = $json_locs;
-	delete ff_loc["$city"];
+	delete ff_loc["$loccity"];
 	for ( key in ff_loc ) {
 		markers.addMarker( new OpenLayers.Marker(
-			new OpenLayers.LonLat(  ff_loc[key]['lon'], ff_loc[key]['lat']  )
-			.transform( new OpenLayers.Projection("EPSG:4326" ),map.getProjectionObject() ),
+			new OpenLayers.LonLat( ff_loc[key]['lon'], ff_loc[key]['lat'] )
+			.transform( new OpenLayers.Projection( "EPSG:4326" ),map.getProjectionObject() ),
 			icon.clone()
 		 ) );
 	}
@@ -219,29 +274,47 @@ EOT;
 	}
 
 	function output_ff_services( $citydata ) {
-		$outstr = '<ul>';
-		if ( isset( $citydata['services'] ) ) {
-			$services = $citydata['services'];
-			foreach ( $services as $service ) {
-				$outstr .= sprintf( '<li>%s (%s ): <a href="%s">%s</a></li>', $service['serviceName'], $service['serviceDescription'], $service['internalUri'], $service['internalUri'] );
-			}
+		if ( ! isset( $citydata['services'] ) ) {
+			return '';
+		}
+		$services = $citydata['services'];
+		$outstr   = '<ul>';
+		foreach ( $services as $service ) {
+			$outstr .= sprintf(
+				'<li>%s ( %s ): <a href="%s">%s</a></li>',
+				$service['serviceName'], $service['serviceDescription'],
+				$service['internalUri'], $service['internalUri']
+			);
 		}
 		$outstr .= '</ul>';
 		return $outstr;
 	}
 
 	function output_ff_contact( $citydata ) {
-		$outstr  = '<p>';
+		if ( ! isset( $citydata['contact'] ) ) {
+			return '';
+		}
 		$contact = $citydata['contact'];
-		// Output -- rather ugly but the data is not uniform, some fields are URIs, some are usernames, ...
+		$outstr  = '<p>';
+		// Output -- rather ugly but the data is not uniform,
+		// some fields are URIs, some are usernames, ...
 		if ( ! empty( $contact['email'] ) ) {
-			$outstr .= sprintf( "E-Mail: <a href=\"mailto:%s\">%s</a><br />\n", $contact['email'], $contact['email'] );
+			$outstr .= sprintf(
+				'E-Mail: <a href=\"mailto:%s\">%s</a><br />',
+				$contact['email'], $contact['email']
+			);
 		}
 		if ( ! empty( $contact['ml'] ) ) {
-			$outstr .= sprintf( "Mailingliste: <a href=\"mailto:%s\">%s</a><br />\n", $contact['ml'], $contact['ml'] );
+			$outstr .= sprintf(
+				'Mailingliste: <a href=\"mailto:%s\">%s</a><br />',
+				$contact['ml'], $contact['ml']
+			);
 		}
 		if ( ! empty( $contact['irc'] ) ) {
-			$outstr .= sprintf( "IRC: <a href=\"%s\">%s</a><br />\n", $contact['irc'], $contact['irc'] );
+			$outstr .= sprintf(
+				'IRC: <a href=\"%s\">%s</a><br />',
+				$contact['irc'], $contact['irc']
+			);
 		}
 		if ( ! empty( $contact['twitter'] ) ) {
 			// catch username instead of URI
@@ -250,18 +323,32 @@ EOT;
 				$twitter_handle = $contact['twitter'];
 			} else {
 				$twitter_url    = $contact['twitter'];
-				$twitter_handle = '@' . substr( $contact['twitter'], strrpos( $contact['twitter'], '/' ) + 1 );
+				$twitter_handle = '@' . substr(
+					$contact['twitter'], strrpos( $contact['twitter'], '/' ) + 1
+				);
 			}
-			$outstr .= sprintf( "Twitter: <a href=\"%s\">%s</a><br />\n", $twitter_url, $twitter_handle );
+			$outstr .= sprintf(
+				'Follow us: <a href=\"%s\">%s</a><br />',
+				$twitter_url, $twitter_handle
+			);
 		}
 		if ( ! empty( $contact['facebook'] ) ) {
-			$outstr .= sprintf( "Facebook: <a href=\"%s\">%s</a><br />\n", $contact['facebook'], $contact['facebook'] );
+			$outstr .= sprintf(
+				'Facebook: <a href=\"%s\">%s</a><br />',
+				$contact['facebook'], $contact['facebook']
+			);
 		}
 		if ( ! empty( $contact['googleplus'] ) ) {
-			$outstr .= sprintf( "G+: <a href=\"%s\">%s</a><br />\n", $contact['googleplus'], $contact['googleplus'] );
+			$outstr .= sprintf(
+				'G+: <a href=\"%s\">%s</a><br />',
+				$contact['googleplus'], $contact['googleplus']
+			);
 		}
 		if ( ! empty( $contact['jabber'] ) ) {
-			$outstr .= sprintf( "XMPP: <a href=\"xmpp:%s\">%s</a><br />\n", $contact['jabber'], $contact['jabber'] );
+			$outstr .= sprintf(
+				'XMPP: <a href=\"xmpp:%s\">%s</a><br />',
+				$contact['jabber'], $contact['jabber']
+			);
 		}
 		$outstr .= '</p>';
 		return $outstr;
@@ -283,7 +370,8 @@ EOT;
 			return "<!-- FF Meta Error: cannot get directory.json, or no URL for '$city' -->\n";
 		}
 
-		if ( false === ( $metadata = FF_Meta_Externaldata::get( $cityurl ) ) ) {
+		$ed = new FF_Meta_Externaldata();
+		if ( false === ( $metadata = $this->ed->get( $cityurl ) ) ) {
 			return "<!-- FF Meta Error: cannot get metadata from $cityurl -->\n";
 		}
 
@@ -315,10 +403,10 @@ EOT;
 	function admin_menu() {
 		// Options Page:
 		add_options_page(
-			'FF Meta Plugin',                   // page title
-			'FF Meta',                          // menu title
-			'manage_options',                   // req'd capability
-			'ff_meta_plugin',                   // menu slug
+			'FF Meta Plugin',         // page title
+			'FF Meta',                // menu title
+			'manage_options',         // req'd capability
+			'ff_meta_plugin',         // menu slug
 			array( 'FF_meta', 'options_page' ) // callback function
 		);
 	}
@@ -333,42 +421,46 @@ EOT;
 			'ff_meta_city'            // option name
 		);
 		add_settings_section(
-			'ff_meta_section-one',                       // ID
-			'Section One',                               // Title
+			'ff_meta_section-one',    // ID
+			'Section One',            // Title
 			array( 'FF_Meta', 'section_one_callback' ), // callback to fill
-			'ff_meta_plugin'                             // page to display on
+			'ff_meta_plugin'          // page to display on
 		);
 		add_settings_field(
-			'ff_meta_city',	                           // ID
-			'Default community',                       // Title
-			array( 'FF_Meta', 'city_callback' ),      // callback to fill field
-			'ff_meta_plugin',                          // menu page=slug to display field on
-			'ff_meta_section-one',                     // section to display the field in
-			array( 'label_for' => 'ff_meta_city_id' )  // ID of input element
+			'ff_meta_city',                          // ID
+			'Default community',                     // Title
+			array( 'FF_Meta', 'city_callback' ),     // callback to fill field
+			'ff_meta_plugin',                        // menu page=slug to display field on
+			'ff_meta_section-one',                   // section to display the field in
+			array( 'label_for' => 'ff_meta_city_id' ) // ID of input element
 		);
 		add_settings_field(
-			'ff_meta_cachetime',                            // ID
-			'Cache time',                                   // Title
-			array( 'FF_Meta', 'cachetime_callback' ),      // callback to fill field
-			'ff_meta_plugin',                               // menu page=slug to display field on
-			'ff_meta_section-one',                          // section to display the field in
+			'ff_meta_cachetime',                      // ID
+			'Cache time',                             // Title
+			array( 'FF_Meta', 'cachetime_callback' ), // callback to fill field
+			'ff_meta_plugin',                         // menu page=slug to display field on
+			'ff_meta_section-one',                    // section to display the field in
 			array( 'label_for' => 'ff_meta_cachetime_id' )  // ID of input element
 		);
 	}
 
 	function section_one_callback() {
-		echo 'This Plugin provides shortcodes to display information from the Freifunk meta.json.';
+		echo 'This Plugin provides shortcodes to display information'
+			.' from the Freifunk meta.json.';
 	}
 
 	function cachetime_callback() {
 		$time = get_option( 'ff_meta_cachetime', FF_META_DEFAULT_CACHETIME );
-		echo "<input type='number' name='ff_meta_cachetime' id='ff_meta_cachetime_id'"
-			." class='small-text code' value='". intval( $time ) . ' /> minutes'.
-			"<p class='description'>Data from external URLs is cached for this number of minutes.</p>";
+		echo '<input type="number" name="ff_meta_cachetime" '
+			.'id="ff_meta_cachetime_id" class="small-text code" value="'
+			. esc_attr( $time ) . ' /> minutes'
+			.'<p class="description">Data from external URLs is cached'
+			.' for this number of minutes.</p>';
 	}
 
 	function city_callback() {
-		if ( false === ( $directory = FF_Meta_Externaldata::get( FF_META_DEFAULT_DIR ) ) ) {
+		$ed = new FF_Meta_Externaldata();
+		if ( false === ( $directory = $this->ed->get( FF_META_DEFAULT_DIR ) ) ) {
 			// TODO: error handling
 			return;
 		}
@@ -378,11 +470,13 @@ EOT;
 		foreach ( array_keys( $directory ) as $city ) {
 			$prettycity = ucwords( str_replace( array( '_', '-' ), ' ', $city ) );
 			$selected   = selected( $default_city, $city );
-			echo "<option value='" . esc attr( $city ) . "' $selected>"
-				. esc_html( $prettycity ) . '</option>';
+			printf(
+				'<option value="%s" %s>%s</option>',
+				esc_attr( $city ), $selected, esc_str( $prettycity )
+			);
 		}
 		echo '</select>';
-		echo "<p class='description'>This is the default city parameter.</p>";
+		echo '<p class="description">This is the default city parameter.</p>';
 	}
 
 	function options_page() {
@@ -402,7 +496,9 @@ EOT;
 		delete_option( 'ff_meta_city' );
 		delete_option( 'ff_meta_cachetime' );
 	}
+
 }
 
-$ffmeta = new FF_Meta;
+$ffmeta = new FF_Meta();
 $ffmeta->register_stuff();
+$GLOBALS['wp-plugin-ffmeta'] = $ffmeta;
