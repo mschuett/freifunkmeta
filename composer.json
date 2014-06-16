@@ -1,0 +1,16 @@
+{
+    "minimum-stability": "stable",
+    "config": {
+        "bin-dir": "bin",
+        "vendor-dir": "vendor"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.1.*",
+        "behat/behat": "2.5.3",
+        "behat/behat": "2.5.3",
+        "behat/mink": "1.5",
+        "behat/mink-extension": "*",
+        "behat/mink-goutte-driver": "*",
+        "behat/mink-selenium2-driver": "*"
+    }
+}

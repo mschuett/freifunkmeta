@@ -1,0 +1,16 @@
+default:
+    context:
+        parameters:
+            base_url: http://localhost:8080/
+            role_map:
+                ender: subscriber
+                starter: editor
+    extensions:
+        Behat\MinkExtension\Extension:
+            base_url: http://localhost:8080/
+            goutte: ~
+            selenium2:
+                wd_host:        http://localhost:8910/wd/hub
+            browser_name:       phantomjs
+            default_session:    selenium2
+            javascript_session: selenium2
