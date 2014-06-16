@@ -3,7 +3,7 @@
 Plugin Name: Freifunk Metadata Shortcodes
 Plugin URI: http://mschuette.name/
 Description: Defines shortcodes to display Freifunk metadata
-Version: 0.4dev
+Version: 0.4
 Author: Martin Schuette
 Author URI: http://mschuette.name/
 */
