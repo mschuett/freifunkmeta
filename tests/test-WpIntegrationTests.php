@@ -53,4 +53,18 @@ class WpIntegrationTests extends WP_UnitTestCase {
         $output = apply_filters( 'the_content', $post->post_content );
         $this->assertRegExp('/radio\.ffhh/', $output);
     }
+
+    function test_post_ff_list() {
+        $post_content = '[ff_list]';
+        $post_attribs = array( 'post_title' => 'Test', 'post_content' => $post_content );
+        $post = $this->factory->post->create_and_get( $post_attribs );
+
+        // w/o filter:
+        $this->assertEquals($post_content, $post->post_content);
+
+        // with filter:
+        $output = apply_filters( 'the_content', $post->post_content );
+        $this->assertRegExp('/Hamburg/', $output);
+        $this->assertRegExp('/Frankfurt/', $output);
+    }
 }

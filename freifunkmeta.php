@@ -29,7 +29,8 @@ class FF_Meta_Externaldata
 
 		// Caching
 		if ( WP_DEBUG || ( false === ( $data = get_transient( $cachekey ) ) ) ) {
-			$http_response = wp_remote_get( $url );
+			$args          = array( 'sslverify' => false );
+			$http_response = wp_remote_get( $url, $args );
 			if ( is_wp_error( $http_response ) ) {
 				$error_msg = sprintf(
 						'Unable to retrieve URL %s, error: %s',
@@ -53,14 +54,15 @@ class FF_Meta_Externaldata
 class FF_Directory
 {
 	private $directory;
+	private $ed;
 
 	function __construct( $ext_data_service = null ) {
 		if ( is_null( $ext_data_service ) ) {
-			$ed = new FF_Meta_Externaldata();
+			$this->ed = new FF_Meta_Externaldata();
 		} else {
-			$ed = $ext_data_service;
+			$this->ed = $ext_data_service;
 		}
-		$data = $ed->get( FF_META_DEFAULT_DIR );
+		$data = $this->ed->get( FF_META_DEFAULT_DIR );
 		if ( is_wp_error( $data ) ) {
 			$this->directory = array();
 		} else {
@@ -74,6 +76,18 @@ class FF_Directory
 		} else {
 			return false;
 		}
+	}
+
+	// get one big array of all known community data
+	function get_all_data() {
+		$all_locs = array();
+		foreach ( $this->directory as $tmp_city => $url ) {
+			$tmp_meta = $this->ed->get( $url );
+			if ( ! is_wp_error( $tmp_meta )	) {
+				$all_locs[$tmp_city] = $tmp_meta;
+			}
+		}
+		return $all_locs;
 	}
 }
 
@@ -180,10 +194,35 @@ class FF_Meta
 		if ( ! shortcode_exists( 'ff_location' ) ) {
 			add_shortcode( 'ff_location', array( $this, 'shortcode_handler' ) );
 		}
+		if ( ! shortcode_exists( 'ff_list' ) ) {
+			add_shortcode( 'ff_list',     array( $this, 'shortcode_handler' ) );
+		}
 
 		add_action( 'admin_menu', array( $this, 'admin_menu' ) );
 		add_action( 'admin_init', array( $this, 'admin_init' ) );
 		register_uninstall_hook( __FILE__, array( 'ff_meta', 'uninstall_hook' ) );
+	}
+
+	private function aux_get_all_locations_json() {
+		if ( WP_DEBUG || ( false === ( $json_locs = get_transient( 'FF_metadata_json_locs' ) ) ) ) {
+			$all_locs  = array();
+			$comm_list = $this->dir->get_all_data();
+			foreach ( $comm_list as $entry ) {
+				if ( isset( $entry['location'] )
+					&& isset( $entry['location']['lat'] )
+					&& isset( $entry['location']['lon'] )
+				) {
+					$all_locs[$entry['location']['city']] = array(
+						'lat'  => $entry['location']['lat'],
+						'lon'  => $entry['location']['lon'],
+					);
+				}
+			}
+			$json_locs = json_encode( $all_locs );
+			$cachetime = get_option( 'FF_meta_cachetime', FF_META_DEFAULT_CACHETIME ) * MINUTE_IN_SECONDS;
+			set_transient( 'FF_metadata_json_locs', $json_locs, $cachetime );
+		}
+		return $json_locs;
 	}
 
 	function output_ff_state( $citydata ) {
@@ -194,34 +233,11 @@ class FF_Meta
 		}
 	}
 
-	function aux_get_all_locations() {
-		// gather all location data
-		if ( WP_DEBUG || ( false === ( $json_locs = get_transient( 'FF_metadata_json_locs' ) ) ) ) {
-			$all_locs   = array();
-			$arr_select = array( 'lat' => 1, 'lon' => 1 );
-			foreach ( $this->dir as $tmp_city => $url ) {
-				try {
-					$tmp_meta = $this->ed->get( $url );
-					if ( ! empty( $tmp_meta['location'] ) ) {
-						$tmp_loc = array_intersect_key( $tmp_meta['location'], $arr_select );
-						$all_locs[$tmp_city] = $tmp_loc;
-					}
-				} catch ( Exception $e ) {
-					// pass
-				}
-			}
-			$json_locs = json_encode( $all_locs );
-			$cachetime = get_option( 'FF_meta_cachetime', FF_META_DEFAULT_CACHETIME ) * MINUTE_IN_SECONDS;
-			set_transient( 'FF_metadata_json_locs', $json_locs, $cachetime );
-		}
-		return $json_locs;
-	}
-
 	function output_ff_location( $citydata ) {
 		// normal per-city code
 		$loc       = new FF_Community( $citydata );
 		$outstr    = $loc->format_address();
-		$json_locs = $this->aux_get_all_locations();
+		$json_locs = $this->aux_get_all_locations_json();
 
 		if ( ! empty( $loc->name ) && ! empty( $loc->name ) ) {
 			$icon_url = plugin_dir_url( __FILE__ ) . 'freifunk_marker.png';
@@ -355,7 +371,20 @@ EOT;
 	}
 
 	function output_ff_list() {
-		return 'here be some ff_list';
+		$comm_list = $this->dir->get_all_data();
+		$outstr    = '<table>';
+		$outstr   .= '<tr><th>Name</th><th>Stadt</th><th>Knoten</th></tr>';
+		foreach ( $comm_list as $handle => $entry ) {
+			$outstr .= sprintf(
+				'<tr><td><a href="%s">%s</a></td><td>%s</td><td>%s</td></tr>',
+				esc_url( $entry['url'] ),
+				isset( $entry['name'] )             ? esc_html( $entry['name'] )             : esc_html($handle),
+				isset( $entry['location']['city'] ) ? esc_html( $entry['location']['city'] ) : 'n/a',
+				isset( $entry['state']['nodes'] )   ? esc_html( $entry['state']['nodes'] )   : 'n/a'
+			);
+		}
+		$outstr .= '</table>';
+		return $outstr;
 	}
 	
 	function shortcode_handler( $atts, $content, $shortcode ) {

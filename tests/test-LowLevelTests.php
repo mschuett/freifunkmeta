@@ -171,10 +171,4 @@ class LowLevelTests extends PHPUnit_Framework_TestCase {
         $this->assertRegExp('/irc\.hackint\.net\/example/', $ret);
         $this->assertRegExp('/Facebook:/', $ret);
     }
-    // function test_aux_get_all_locations() {
-    //     $this->markTestIncomplete(
-    //       'This test has not been implemented yet.'
-    //     );
-    // }
-
 }
