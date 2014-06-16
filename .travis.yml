@@ -8,7 +8,6 @@ php:
     - hhvm
 
 env:
-    - WP_VERSION=3.7
     - WP_VERSION=3.8
     - WP_VERSION=latest
 
