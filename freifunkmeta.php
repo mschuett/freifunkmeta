@@ -281,7 +281,7 @@ EOT;
 		$outstr   = '<ul>';
 		foreach ( $services as $service ) {
 			$outstr .= sprintf(
-				'<li>%s ( %s ): <a href="%s">%s</a></li>',
+				'<li>%s (%s): <a href="%s">%s</a></li>',
 				$service['serviceName'], $service['serviceDescription'],
 				$service['internalUri'], $service['internalUri']
 			);
@@ -328,7 +328,7 @@ EOT;
 				);
 			}
 			$outstr .= sprintf(
-				'Follow us: <a href=\"%s\">%s</a><br />',
+				'Twitter: <a href=\"%s\">%s</a><br />',
 				$twitter_url, $twitter_handle
 			);
 		}
