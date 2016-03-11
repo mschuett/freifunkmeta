@@ -296,11 +296,13 @@ EOT;
 		$services = $citydata['services'];
 		$outstr   = '<table><th>Dienst</th><th>Beschreibung</th><th>Freifunk URI</th><th>Internet URI</th>';
                 foreach ( $services as $service ) {
+                        $internalUri = isset($service['internalUri']) ? $service['internalUri'] : '';
+                        $externalUri = isset($service['externalUri']) ? $service['externalUri'] : '';
                         $outstr .= sprintf(
                                 '<tr><td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td><a href="%s">%s</a></td></tr>',
-                                $service['serviceName'], $service['serviceDescription'],                       
-                                $service['internalUri'], $service['internalUri'],
-                                $service['externalUri']?:'#', $service['externalUri']?:''
+                                $service['serviceName'], $service['serviceDescription'],
+                                $internalUri, $internalUri,
+                                $externalUri, $externalUri
                         );
                 }
                 $outstr .= '</table>';
