@@ -300,7 +300,7 @@ EOT;
                                 '<tr><td>%s</td><td>%s</td><td><a href="%s">%s</a></td><td><a href="%s">%s</a></td></tr>',
                                 $service['serviceName'], $service['serviceDescription'],                       
                                 $service['internalUri'], $service['internalUri'],
-                                $service['externalUri'], $service['externalUri']
+                                $service['externalUri']?:'#', $service['externalUri']?:''
                         );
                 }
                 $outstr .= '</table>';
