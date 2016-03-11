@@ -126,9 +126,13 @@ class LowLevelTests extends PHPUnit_Framework_TestCase {
                 'serviceName'        => 'jabber',
                 'serviceDescription' => 'chat',
                 'internalUri'        => 'xmpp://jabber.local',
+                'externalUri'        => 'xmpp://jabber.example.org',
             )));
         $ret = $this->FFM->output_ff_services($data);
-        $this->assertEquals('<ul><li>jabber (chat): <a href="xmpp://jabber.local">xmpp://jabber.local</a></li></ul>', $ret);
+        $this->assertEquals('<table><th>Dienst</th><th>Beschreibung</th><th>Freifunk URI</th><th>Internet URI</th>'.
+            '<tr><td>jabber</td><td>chat</td><td><a href="xmpp://jabber.local">xmpp://jabber.local</a></td>'.
+            '<td><a href="xmpp://jabber.example.org">xmpp://jabber.example.org</a></td></tr>'.
+            '</table>', $ret);
     }
 
     function test_output_ff_contact_null() {
